@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-
 // ── DATA ─────────────────────────────────────────────────────────────────────
 const DAYS = [
   { day:1, title:"OSI Model", topic:"OSI Model – all 7 layers, what happens at each", phase:1,
